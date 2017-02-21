@@ -1,6 +1,14 @@
-apply plugin: 'java'
+apply plugin: 'com.android.library'
+apply plugin: 'me.tatarka.retrolambda'
 
-ext.artifactId = 'logansquare'
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.0"
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
 
 dependencies {
     compile 'com.fasterxml.jackson.core:jackson-core:2.5.1'
