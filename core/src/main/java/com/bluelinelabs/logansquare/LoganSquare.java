@@ -1,14 +1,19 @@
 package com.bluelinelabs.logansquare;
 
+import com.bluelinelabs.logansquare.internal.objectmappers.ArrayDequeMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.ArrayListMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.BooleanMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.DoubleMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.FloatMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.HashMapMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.HashSetMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.IntegerMapper;
-import com.bluelinelabs.logansquare.internal.objectmappers.ListMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.LinkedHashMapMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.LinkedListMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.LongMapper;
-import com.bluelinelabs.logansquare.internal.objectmappers.MapMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.ObjectMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.StringMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.TreeMapMapper;
 import com.bluelinelabs.logansquare.typeconverters.DefaultCalendarConverter;
 import com.bluelinelabs.logansquare.typeconverters.DefaultDateConverter;
 import com.bluelinelabs.logansquare.typeconverters.TypeConverter;
@@ -19,33 +24,51 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** The point of all interaction with this library. */
 public class LoganSquare {
 
-    private static final ListMapper LIST_MAPPER = new ListMapper();
-    private static final MapMapper MAP_MAPPER = new MapMapper();
-
     private static final Map<Class, JsonMapper> OBJECT_MAPPERS = new ConcurrentHashMap<Class, JsonMapper>();
     static {
+        ObjectMapper objectMapper = new ObjectMapper();
         OBJECT_MAPPERS.put(String.class, new StringMapper());
         OBJECT_MAPPERS.put(Integer.class, new IntegerMapper());
         OBJECT_MAPPERS.put(Long.class, new LongMapper());
         OBJECT_MAPPERS.put(Float.class, new FloatMapper());
         OBJECT_MAPPERS.put(Double.class, new DoubleMapper());
         OBJECT_MAPPERS.put(Boolean.class, new BooleanMapper());
-        OBJECT_MAPPERS.put(Object.class, new ObjectMapper());
-        OBJECT_MAPPERS.put(List.class, LIST_MAPPER);
-        OBJECT_MAPPERS.put(ArrayList.class, LIST_MAPPER);
-        OBJECT_MAPPERS.put(Map.class, MAP_MAPPER);
-        OBJECT_MAPPERS.put(HashMap.class, MAP_MAPPER);
+        OBJECT_MAPPERS.put(Object.class, objectMapper);
+        ArrayListMapper<Object> arrayListMapper = new ArrayListMapper<>(objectMapper);
+        OBJECT_MAPPERS.put(List.class, arrayListMapper);
+        OBJECT_MAPPERS.put(ArrayList.class, arrayListMapper);
+        OBJECT_MAPPERS.put(LinkedList.class, new LinkedListMapper<>(objectMapper));
+        HashSetMapper<Object> hashSetMapper = new HashSetMapper<>(objectMapper);
+        OBJECT_MAPPERS.put(Set.class, hashSetMapper);
+        OBJECT_MAPPERS.put(HashSet.class, hashSetMapper);
+        HashMapMapper<Object> hashMapMapper = new HashMapMapper<>(objectMapper);
+        OBJECT_MAPPERS.put(Map.class, hashMapMapper);
+        OBJECT_MAPPERS.put(HashMap.class, hashMapMapper);
+        OBJECT_MAPPERS.put(TreeMap.class, new TreeMapMapper<>(objectMapper));
+        OBJECT_MAPPERS.put(LinkedHashMap.class, new LinkedHashMapMapper<>(objectMapper));
+        ArrayDequeMapper<Object> arrayDequeMapper = new ArrayDequeMapper<>(objectMapper);
+        OBJECT_MAPPERS.put(Queue.class, arrayDequeMapper);
+        OBJECT_MAPPERS.put(Deque.class, arrayDequeMapper);
+        OBJECT_MAPPERS.put(ArrayDeque.class, arrayDequeMapper);
     }
 
     private static final ConcurrentHashMap<ParameterizedType, JsonMapper> PARAMETERIZED_OBJECT_MAPPERS = new ConcurrentHashMap<ParameterizedType, JsonMapper>();
@@ -240,6 +263,32 @@ public class LoganSquare {
     }
 
     @SuppressWarnings("unchecked")
+    private static <E> JsonMapper<E> tryGetCollectionMapper(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers){
+        JsonMapper<E> mapper;
+        if (type.rawType == List.class || type.rawType == ArrayList.class){
+            mapper = new ArrayListMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
+        } else if (type.rawType == Map.class || type.rawType == HashMap.class) {
+            mapper = new HashMapMapper(LoganSquare.mapperFor(type.typeParameters.get(1), partialMappers));
+        } else if (type.rawType == Set.class || type.rawType == HashSet.class) {
+            mapper = new HashSetMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
+        } else if (type.rawType == LinkedList.class) {
+            mapper = new LinkedListMapper(LoganSquare.mapperFor(type.typeParameters.get(1), partialMappers));
+        } else if (type.rawType == TreeMap.class) {
+            mapper = new TreeMapMapper(LoganSquare.mapperFor(type.typeParameters.get(1), partialMappers));
+        } else if (type.rawType == LinkedHashMap.class) {
+            mapper = new LinkedHashMapMapper(LoganSquare.mapperFor(type.typeParameters.get(1), partialMappers));
+        } else if (type.rawType == Queue.class || type.rawType == Deque.class || type.rawType == ArrayDeque.class) {
+            mapper = new ArrayDequeMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
+        } else {
+            mapper = null;
+        }
+        if (mapper != null) {
+            PARAMETERIZED_OBJECT_MAPPERS.put(type, mapper);
+        }
+        return mapper;
+    }
+
+    @SuppressWarnings("unchecked")
     private static <E> JsonMapper<E> getMapper(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers) {
         if (type.typeParameters.size() == 0) {
             return getMapper((Class<E>)type.rawType);
@@ -255,6 +304,10 @@ public class LoganSquare {
             return PARAMETERIZED_OBJECT_MAPPERS.get(type);
         } else {
             try {
+                JsonMapper<E> mapper = tryGetCollectionMapper(type, partialMappers);
+                if (mapper != null) {
+                    return mapper;
+                }
                 Class<?> mapperClass = Class.forName(type.rawType.getName() + Constants.MAPPER_CLASS_SUFFIX);
                 Constructor constructor = mapperClass.getDeclaredConstructors()[0];
                 Object[] args = new Object[2 + type.typeParameters.size()];
@@ -263,7 +316,7 @@ public class LoganSquare {
                 for (int i = 0; i < type.typeParameters.size(); i++) {
                     args[i + 1] = type.typeParameters.get(i);
                 }
-                JsonMapper<E> mapper = (JsonMapper<E>)constructor.newInstance(args);
+                mapper = (JsonMapper<E>)constructor.newInstance(args);
                 PARAMETERIZED_OBJECT_MAPPERS.put(type, mapper);
                 return mapper;
             } catch (Exception ignored) {
