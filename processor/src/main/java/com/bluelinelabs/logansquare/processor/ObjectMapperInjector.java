@@ -5,6 +5,7 @@ import com.bluelinelabs.logansquare.LoganSquare;
 import com.bluelinelabs.logansquare.ParameterizedType;
 import com.bluelinelabs.logansquare.processor.type.Type;
 import com.bluelinelabs.logansquare.processor.type.Type.ClassNameObjectMapper;
+import com.bluelinelabs.logansquare.processor.type.TypeParameterNode;
 import com.bluelinelabs.logansquare.processor.type.field.ParameterizedTypeField;
 import com.bluelinelabs.logansquare.processor.type.field.TypeConverterFieldType;
 import com.bluelinelabs.logansquare.typeconverters.TypeConverter;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -32,6 +34,7 @@ import java.util.Set;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.TypeVariable;
+import static com.bluelinelabs.logansquare.processor.type.TypeParameterNode.ANY_TYPE_NODE;
 
 public class ObjectMapperInjector implements Injector {
 
@@ -74,11 +77,16 @@ public class ObjectMapperInjector implements Injector {
                         .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                         .initializer("$T.mapperFor($T.class)", LoganSquare.class, mJsonObjectHolder.parentTypeName);
             } else {
-                parentMapperBuilder = FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(JsonMapper.class), mJsonObjectHolder.getParameterizedParentTypeName()), PARENT_OBJECT_MAPPER_VARIABLE_NAME)
+                parentMapperBuilder = FieldSpec.builder(ClassName.get(JsonMapper.class),
+                        PARENT_OBJECT_MAPPER_VARIABLE_NAME)
                         .addModifiers(Modifier.PRIVATE);
 
-                if (mJsonObjectHolder.typeParameters.size() == 0) {
-                    parentMapperBuilder.initializer("$T.mapperFor(new $T<$T>() { })", LoganSquare.class, ParameterizedType.class, mJsonObjectHolder.getParameterizedParentTypeName());
+                if (mJsonObjectHolder.parentTypeParametersInfo != null && !mJsonObjectHolder.parentTypeParametersInfo.hasGenericParameters()) {
+                    parentMapperBuilder.initializer(CodeBlock.builder()
+                            .add("$T.mapperFor(", LoganSquare.class)
+                            .add(getParametrizedMapperFroArgCode(mJsonObjectHolder.parentTypeParametersInfo, mJsonObjectHolder.typeParameters))
+                            .add(")")
+                            .build());
                 }
             }
 
@@ -155,8 +163,14 @@ public class ObjectMapperInjector implements Injector {
         }
 
         if (createdJsonMappers.size() > 0) {
-            if (mJsonObjectHolder.hasParentClass()) {
-                constructorBuilder.addStatement("$L = $T.mapperFor(new $T<$T>() { })", PARENT_OBJECT_MAPPER_VARIABLE_NAME, LoganSquare.class, ParameterizedType.class, mJsonObjectHolder.getParameterizedParentTypeName());
+            if (mJsonObjectHolder.parentTypeParametersInfo != null && mJsonObjectHolder.parentTypeParametersInfo.hasGenericParameters()) {
+                constructorBuilder.addCode(CodeBlock.builder()
+                        .add("$[")
+                        .add("$L = $T.mapperFor(", PARENT_OBJECT_MAPPER_VARIABLE_NAME, LoganSquare.class)
+                        .add(getParametrizedMapperFroArgCode(mJsonObjectHolder.parentTypeParametersInfo, mJsonObjectHolder.typeParameters))
+                        .add(", partialMappers)")
+                        .add(";\n$]")
+                        .build());
             }
             builder.addMethod(constructorBuilder.build());
         }
@@ -168,6 +182,35 @@ public class ObjectMapperInjector implements Injector {
         addUsedTypeConverterMethods(builder);
 
         return builder.build();
+    }
+
+    private CodeBlock getParametrizedMapperFroArgCode(TypeParameterNode info, List<? extends TypeParameterElement> typeParameters) {
+        if (info == ANY_TYPE_NODE) {
+            return CodeBlock.builder().add("new $T<>($T.class)", ParameterizedType.class, Object.class).build();
+        }
+        if (info.typeVarName != null) {
+            for (TypeParameterElement typeParameter : typeParameters) {
+                String typeName = typeParameter.getSimpleName().toString();
+                if (typeParameter.getSimpleName().toString().equals(info.typeVarName)) {
+                    return CodeBlock.builder().add(typeName + "Type").build();
+                }
+            }
+            return CodeBlock.builder().add("new $T<>($T.class)", ParameterizedType.class, Object.class).build();
+        }
+        CodeBlock.Builder result = CodeBlock.builder();
+        String name = info.type.toString();
+        result.add("new $T(", ParameterizedType.class);
+        if (!info.typeArguments.isEmpty()) {
+            result.add("$T.class", ClassName.bestGuess(name.substring(0, name.indexOf("<"))));
+            for (TypeParameterNode typeParameterNode : info.typeArguments) {
+                result.add(", ");
+                result.add(getParametrizedMapperFroArgCode(typeParameterNode, mJsonObjectHolder.typeParameters));
+            }
+        } else {
+            result.add("$T.class", ClassName.bestGuess(name));
+        }
+        result.add(")");
+        return result.build();
     }
 
     private MethodSpec getParseMethod() {

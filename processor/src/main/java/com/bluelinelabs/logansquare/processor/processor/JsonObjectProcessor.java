@@ -11,6 +11,7 @@ import com.bluelinelabs.logansquare.processor.JsonObjectHolder;
 import com.bluelinelabs.logansquare.processor.JsonObjectHolder.JsonObjectHolderBuilder;
 import com.bluelinelabs.logansquare.processor.TextUtils;
 import com.bluelinelabs.logansquare.processor.TypeUtils;
+import com.bluelinelabs.logansquare.processor.type.TypeParameterNode;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 
@@ -76,11 +77,13 @@ public class JsonObjectProcessor extends Processor {
             String injectedSimpleClassName = objectClassName + Constants.MAPPER_CLASS_SUFFIX;
             boolean abstractClass = element.getModifiers().contains(ABSTRACT);
             List<? extends TypeParameterElement> parentTypeParameters = new ArrayList<>();
+            TypeParameterNode parentTypeParametersInfo = null;
             List<String> parentUsedTypeParameters = new ArrayList<>();
             TypeName parentClassName = null;
 
             TypeMirror superclass = typeElement.getSuperclass();
             if (superclass.getKind() != TypeKind.NONE) {
+                parentTypeParametersInfo = TypeParameterNode.fromTypeMirror(superclass);
                 TypeElement superclassElement = (TypeElement)types.asElement(superclass);
                 if (superclassElement.getAnnotation(JsonObject.class) != null) {
                     if (superclassElement.getTypeParameters() != null) {
@@ -117,6 +120,7 @@ public class JsonObjectProcessor extends Processor {
                     .setParentTypeName(parentClassName)
                     .setParentTypeParameters(parentTypeParameters)
                     .setParentUsedTypeParameters(parentUsedTypeParameters)
+                    .setParentTypeParametersInfo(parentTypeParametersInfo)
                     .setFieldDetectionPolicy(annotation.fieldDetectionPolicy())
                     .setFieldNamingPolicy(annotation.fieldNamingPolicy())
                     .setSerializeNullObjects(annotation.serializeNullObjects())
