@@ -2,6 +2,7 @@ package com.bluelinelabs.logansquare.processor;
 
 import com.bluelinelabs.logansquare.annotation.JsonObject.FieldDetectionPolicy;
 import com.bluelinelabs.logansquare.annotation.JsonObject.FieldNamingPolicy;
+import com.bluelinelabs.logansquare.processor.type.TypeParameterNode;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
@@ -23,6 +24,7 @@ public class JsonObjectHolder {
     public final TypeName parentTypeName;
     public final List<? extends TypeParameterElement> parentTypeParameters;
     public final List<String> parentUsedTypeParameters;
+    public final TypeParameterNode parentTypeParametersInfo;
     public final FieldDetectionPolicy fieldDetectionPolicy;
     public final FieldNamingPolicy fieldNamingPolicy;
     public final boolean serializeNullObjects;
@@ -63,6 +65,7 @@ public class JsonObjectHolder {
         isAbstractClass = builder.isAbstractClass;
         parentTypeName = builder.parentTypeName;
         parentTypeParameters = builder.parentTypeParameters;
+        parentTypeParametersInfo= builder.parentTypeParametersInfo;
         parentUsedTypeParameters = builder.parentUsedTypeParameters;
         fieldDetectionPolicy = builder.fieldDetectionPolicy;
         fieldNamingPolicy = builder.fieldNamingPolicy;
@@ -79,6 +82,7 @@ public class JsonObjectHolder {
         private TypeName parentTypeName;
         private List<? extends TypeParameterElement> parentTypeParameters;
         private List<String> parentUsedTypeParameters;
+        public TypeParameterNode parentTypeParametersInfo;
         private FieldDetectionPolicy fieldDetectionPolicy;
         private FieldNamingPolicy fieldNamingPolicy;
         private boolean serializeNullObjects;
@@ -112,6 +116,11 @@ public class JsonObjectHolder {
 
         public JsonObjectHolderBuilder setParentTypeParameters(List<? extends TypeParameterElement> parentTypeParameters) {
             this.parentTypeParameters = parentTypeParameters;
+            return this;
+        }
+
+        public JsonObjectHolderBuilder setParentTypeParametersInfo(TypeParameterNode parentTypeParametersInfo) {
+            this.parentTypeParametersInfo = parentTypeParametersInfo;
             return this;
         }
 
