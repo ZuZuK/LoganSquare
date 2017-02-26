@@ -1,14 +1,9 @@
 package com.bluelinelabs.logansquare.processor;
 
-import com.bluelinelabs.logansquare.annotation.JsonObject.FieldDetectionPolicy;
 import com.bluelinelabs.logansquare.annotation.JsonObject.FieldNamingPolicy;
 import com.bluelinelabs.logansquare.processor.type.TypeParameterNode;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeVariableName;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -22,10 +17,7 @@ public class JsonObjectHolder {
     public final TypeName objectTypeName;
     public final boolean isAbstractClass;
     public final TypeName parentTypeName;
-    public final List<? extends TypeParameterElement> parentTypeParameters;
-    public final List<String> parentUsedTypeParameters;
     public final TypeParameterNode parentTypeParametersInfo;
-    public final FieldDetectionPolicy fieldDetectionPolicy;
     public final FieldNamingPolicy fieldNamingPolicy;
     public final boolean serializeNullObjects;
     public final boolean serializeNullCollectionElements;
@@ -42,32 +34,13 @@ public class JsonObjectHolder {
         return parentTypeName != null;
     }
 
-    public TypeName getParameterizedParentTypeName() {
-        if (parentUsedTypeParameters.size() > 0) {
-            List<TypeName> usedParameters = new ArrayList<>();
-            for (String parameter : parentUsedTypeParameters) {
-                if (parameter.indexOf(".") > 0) {
-                    usedParameters.add(ClassName.bestGuess(parameter));
-                } else {
-                    usedParameters.add(TypeVariableName.get(parameter));
-                }
-            }
-            return ParameterizedTypeName.get((ClassName)parentTypeName, usedParameters.toArray(new TypeName[usedParameters.size()]));
-        } else {
-            return parentTypeName;
-        }
-    }
-
     private JsonObjectHolder(JsonObjectHolderBuilder builder) {
         packageName = builder.packageName;
         injectedClassName = builder.injectedClassName;
         objectTypeName = builder.objectTypeName;
         isAbstractClass = builder.isAbstractClass;
         parentTypeName = builder.parentTypeName;
-        parentTypeParameters = builder.parentTypeParameters;
-        parentTypeParametersInfo= builder.parentTypeParametersInfo;
-        parentUsedTypeParameters = builder.parentUsedTypeParameters;
-        fieldDetectionPolicy = builder.fieldDetectionPolicy;
+        parentTypeParametersInfo = builder.parentTypeParametersInfo;
         fieldNamingPolicy = builder.fieldNamingPolicy;
         serializeNullObjects = builder.serializeNullObjects;
         serializeNullCollectionElements = builder.serializeNullCollectionElements;
@@ -80,10 +53,7 @@ public class JsonObjectHolder {
         private TypeName objectTypeName;
         private boolean isAbstractClass;
         private TypeName parentTypeName;
-        private List<? extends TypeParameterElement> parentTypeParameters;
-        private List<String> parentUsedTypeParameters;
-        public TypeParameterNode parentTypeParametersInfo;
-        private FieldDetectionPolicy fieldDetectionPolicy;
+        private TypeParameterNode parentTypeParametersInfo;
         private FieldNamingPolicy fieldNamingPolicy;
         private boolean serializeNullObjects;
         private boolean serializeNullCollectionElements;
@@ -114,23 +84,8 @@ public class JsonObjectHolder {
             return this;
         }
 
-        public JsonObjectHolderBuilder setParentTypeParameters(List<? extends TypeParameterElement> parentTypeParameters) {
-            this.parentTypeParameters = parentTypeParameters;
-            return this;
-        }
-
         public JsonObjectHolderBuilder setParentTypeParametersInfo(TypeParameterNode parentTypeParametersInfo) {
             this.parentTypeParametersInfo = parentTypeParametersInfo;
-            return this;
-        }
-
-        public JsonObjectHolderBuilder setParentUsedTypeParameters(List<String> parentUsedTypeParameters) {
-            this.parentUsedTypeParameters = parentUsedTypeParameters;
-            return this;
-        }
-
-        public JsonObjectHolderBuilder setFieldDetectionPolicy(FieldDetectionPolicy fieldDetectionPolicy) {
-            this.fieldDetectionPolicy = fieldDetectionPolicy;
             return this;
         }
 

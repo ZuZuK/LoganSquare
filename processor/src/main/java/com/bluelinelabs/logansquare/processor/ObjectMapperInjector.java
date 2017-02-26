@@ -68,22 +68,24 @@ public class ObjectMapperInjector {
             builder.addTypeVariable(TypeVariableName.get((TypeVariable)typeParameterElement.asType()));
         }
 
-        if (mJsonObjectHolder.hasParentClass()) {
+        if (mJsonObjectHolder.parentTypeName != null && mJsonObjectHolder.parentTypeParametersInfo != null) {
             FieldSpec.Builder parentMapperBuilder;
 
-            if (mJsonObjectHolder.parentTypeParameters.size() == 0) {
+            //TODO: there is a bug if we have such hierarchy: @JsonObject ClassA<T> that extends ClassB that extends @JsonObject ClassC<List<String>>
+            // it will create mapper for ClassC but not for ClassC<List<String>>
+            // actually we should get rid of mJsonObjectHolder.parentTypeName and generate right mJsonObjectHolder.parentTypeParametersInfo for deep hided parent
+            if (mJsonObjectHolder.parentTypeParametersInfo.typeArguments.isEmpty()) {
                 parentMapperBuilder = FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(JsonMapper.class), mJsonObjectHolder.parentTypeName), PARENT_OBJECT_MAPPER_VARIABLE_NAME)
                         .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                         .initializer("$T.mapperFor($T.class)", LoganSquare.class, mJsonObjectHolder.parentTypeName);
             } else {
-                parentMapperBuilder = FieldSpec.builder(ClassName.get(JsonMapper.class),
-                        PARENT_OBJECT_MAPPER_VARIABLE_NAME)
+                parentMapperBuilder = FieldSpec.builder(ClassName.get(JsonMapper.class), PARENT_OBJECT_MAPPER_VARIABLE_NAME)
                         .addModifiers(Modifier.PRIVATE);
 
-                if (mJsonObjectHolder.parentTypeParametersInfo != null && !mJsonObjectHolder.parentTypeParametersInfo.hasGenericParameters()) {
+                if (!mJsonObjectHolder.parentTypeParametersInfo.hasGenericParameters()) {
                     parentMapperBuilder.initializer(CodeBlock.builder()
                             .add("$T.mapperFor(", LoganSquare.class)
-                            .add(getParametrizedMapperFroArgCode(mJsonObjectHolder.parentTypeParametersInfo, mJsonObjectHolder.typeParameters))
+                            .add(getParametrizedMapperCodeBlock(mJsonObjectHolder.parentTypeParametersInfo, mJsonObjectHolder.typeParameters))
                             .add(")")
                             .build());
                 }
@@ -166,7 +168,7 @@ public class ObjectMapperInjector {
                 constructorBuilder.addCode(CodeBlock.builder()
                         .add("$[")
                         .add("$L = $T.mapperFor(", PARENT_OBJECT_MAPPER_VARIABLE_NAME, LoganSquare.class)
-                        .add(getParametrizedMapperFroArgCode(mJsonObjectHolder.parentTypeParametersInfo, mJsonObjectHolder.typeParameters))
+                        .add(getParametrizedMapperCodeBlock(mJsonObjectHolder.parentTypeParametersInfo, mJsonObjectHolder.typeParameters))
                         .add(", partialMappers)")
                         .add(";\n$]")
                         .build());
@@ -183,7 +185,7 @@ public class ObjectMapperInjector {
         return builder.build();
     }
 
-    private CodeBlock getParametrizedMapperFroArgCode(TypeParameterNode info, List<? extends TypeParameterElement> typeParameters) {
+    private CodeBlock getParametrizedMapperCodeBlock(TypeParameterNode info, List<? extends TypeParameterElement> typeParameters) {
         if (info == ANY_TYPE_NODE) {
             return CodeBlock.builder().add("new $T<>($T.class)", ParameterizedType.class, Object.class).build();
         }
@@ -203,7 +205,7 @@ public class ObjectMapperInjector {
             result.add("$T.class", ClassName.bestGuess(name.substring(0, name.indexOf("<"))));
             for (TypeParameterNode typeParameterNode : info.typeArguments) {
                 result.add(", ");
-                result.add(getParametrizedMapperFroArgCode(typeParameterNode, mJsonObjectHolder.typeParameters));
+                result.add(getParametrizedMapperCodeBlock(typeParameterNode, mJsonObjectHolder.typeParameters));
             }
         } else {
             result.add("$T.class", ClassName.bestGuess(name));
@@ -259,7 +261,7 @@ public class ObjectMapperInjector {
 
         int parseFieldLines = addParseFieldLines(builder);
 
-        if (mJsonObjectHolder.hasParentClass()) {
+        if (mJsonObjectHolder.parentTypeName != null && mJsonObjectHolder.parentTypeParametersInfo != null) {
             if (parseFieldLines > 0) {
                 builder.nextControlFlow("else");
                 builder.addStatement("$L.parseField(instance, fieldName, $L)", PARENT_OBJECT_MAPPER_VARIABLE_NAME, JSON_PARSER_VARIABLE_NAME);
@@ -315,7 +317,7 @@ public class ObjectMapperInjector {
             }
         }
 
-        if (mJsonObjectHolder.hasParentClass()) {
+        if (mJsonObjectHolder.parentTypeName != null && mJsonObjectHolder.parentTypeParametersInfo != null) {
             builder.addStatement("$L.serialize(object, $L, false)", PARENT_OBJECT_MAPPER_VARIABLE_NAME, JSON_GENERATOR_VARIABLE_NAME);
         }
 
