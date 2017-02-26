@@ -19,4 +19,9 @@ public class ArrayDequeMapper<TItem> extends SingleParameterCollectionMapper<TIt
         return new LinkedList<>(sourceList);
     }
 
+    @Override
+    protected List<TItem> toList(final LinkedList<TItem> sourceCollection) {
+        return sourceCollection;
+    }
+
 }
