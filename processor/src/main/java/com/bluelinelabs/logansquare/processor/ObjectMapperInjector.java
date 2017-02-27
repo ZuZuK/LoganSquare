@@ -135,8 +135,9 @@ public class ObjectMapperInjector implements Injector {
         }
 
         for (JsonFieldHolder jsonFieldHolder : mJsonObjectHolder.fieldMap.values()) {
-            if (jsonFieldHolder.type instanceof ParameterizedTypeField) {
-                final String jsonMapperVariableName = getJsonMapperVariableNameForTypeParameter(((ParameterizedTypeField)jsonFieldHolder.type).getParameterName());
+            if (jsonFieldHolder.type instanceof ParameterizedTypeField
+                    && jsonFieldHolder.typeParameterNode != null) {
+                final String jsonMapperVariableName = getJsonMapperVariableNameForTypeParameter(((ParameterizedTypeField) jsonFieldHolder.type).getParameterName());
 
                 if (!createdJsonMappers.contains(jsonMapperVariableName)) {
                     ParameterizedTypeName parameterizedType = ParameterizedTypeName.get(ClassName.get(JsonMapper.class), jsonFieldHolder.type.getTypeName());
@@ -147,7 +148,12 @@ public class ObjectMapperInjector implements Injector {
                             .build());
 
                     String typeName = jsonMapperVariableName + "Type";
-                    constructorBuilder.addStatement("$T $L = new $T<$T>() { }", ParameterizedType.class, typeName, ParameterizedType.class, jsonFieldHolder.type.getTypeName());
+                    constructorBuilder.addCode(CodeBlock.builder()
+                            .add("$[")
+                            .add("$T $L = ", ParameterizedType.class, typeName)
+                            .add(getParametrizedMapperCodeBlock(jsonFieldHolder.typeParameterNode, mJsonObjectHolder.typeParameters))
+                            .add(";\n$]")
+                            .build());
 
                     if (mJsonObjectHolder.typeParameters.size() > 0) {
                         constructorBuilder.beginControlFlow("if ($L.equals(type))", typeName);

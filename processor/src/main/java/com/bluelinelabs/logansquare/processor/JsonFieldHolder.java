@@ -1,10 +1,11 @@
 package com.bluelinelabs.logansquare.processor;
 
 import com.bluelinelabs.logansquare.processor.type.Type;
+import com.bluelinelabs.logansquare.processor.type.TypeParameterNode;
 import com.bluelinelabs.logansquare.processor.type.collection.CollectionType;
-import com.bluelinelabs.logansquare.processor.type.field.ParameterizedTypeField;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.lang.model.element.Element;
@@ -24,6 +25,7 @@ public class JsonFieldHolder {
     public boolean shouldParse;
     public boolean shouldSerialize;
     public Type type;
+    public TypeParameterNode typeParameterNode;
 
     public String fill(Element element, Elements elements, Types types, String[] fieldNames, TypeMirror typeConverterType, JsonObjectHolder objectHolder, boolean shouldParse, boolean shouldSerialize) {
         if (fieldNames == null || fieldNames.length == 0) {
@@ -45,6 +47,11 @@ public class JsonFieldHolder {
         setterMethod = getSetter(element, elements);
         getterMethod = getGetter(element, elements);
 
+        try {
+            typeParameterNode = TypeParameterNode.fromTypeMirror(element.asType(), new HashMap<>());
+        } catch (Throwable tr) {
+            //ignore
+        }
         type = Type.typeFor(element.asType(), typeConverterType, elements, types);
         return ensureValidType(type, element);
     }
@@ -152,20 +159,4 @@ public class JsonFieldHolder {
         return !TextUtils.isEmpty(getterMethod);
     }
 
-    public boolean isGenericType() {
-        return isGenericType(type);
-    }
-
-    private boolean isGenericType(Type type) {
-        if (type instanceof ParameterizedTypeField) {
-            return true;
-        } else {
-            for (Type parameterizedType : type.parameterTypes) {
-                if (isGenericType(parameterizedType)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
 }
