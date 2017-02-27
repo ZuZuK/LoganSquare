@@ -2,27 +2,31 @@ package com.bluelinelabs.logansquare.processor.type;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
 public class TypeParameterNode {
 
     public static final TypeParameterNode ANY_TYPE_NODE = new TypeParameterNode();
 
-    public static TypeParameterNode fromTypeMirror(TypeMirror typeMirror) {
-        if (typeMirror.getKind() == TypeKind.TYPEVAR) {
+    public static TypeParameterNode fromTypeMirror(TypeMirror typeMirror, Map<String, TypeParameterNode> filledParametersValues) {
+        if (typeMirror instanceof TypeVariable) {
+            if (filledParametersValues.containsKey(typeMirror.toString())) {
+                return filledParametersValues.get(typeMirror.toString());
+            }
             return new TypeParameterNode(typeMirror.toString());
         }
         if (typeMirror instanceof WildcardType) {
             WildcardType wildcard = (WildcardType) typeMirror;
             if (wildcard.getExtendsBound() != null) {
-                return fromTypeMirror(wildcard.getExtendsBound());
+                return fromTypeMirror(wildcard.getExtendsBound(), filledParametersValues);
             } else if (wildcard.getSuperBound() != null) {
-                return fromTypeMirror(wildcard.getSuperBound());
+                return fromTypeMirror(wildcard.getSuperBound(), filledParametersValues);
             } else {
                 return ANY_TYPE_NODE;
             }
@@ -30,7 +34,7 @@ public class TypeParameterNode {
         if (typeMirror instanceof DeclaredType) {
             ArrayList<TypeParameterNode> typeArguments = new ArrayList<>();
             for (TypeMirror typeArgument : ((DeclaredType) typeMirror).getTypeArguments()) {
-                typeArguments.add(TypeParameterNode.fromTypeMirror(typeArgument));
+                typeArguments.add(TypeParameterNode.fromTypeMirror(typeArgument, filledParametersValues));
             }
             return new TypeParameterNode((DeclaredType) typeMirror, typeArguments);
         }

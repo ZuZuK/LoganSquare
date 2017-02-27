@@ -16,7 +16,6 @@ public class JsonObjectHolder {
     public final String injectedClassName;
     public final TypeName objectTypeName;
     public final boolean isAbstractClass;
-    public final TypeName parentTypeName;
     public final TypeParameterNode parentTypeParametersInfo;
     public final FieldNamingPolicy fieldNamingPolicy;
     public final boolean serializeNullObjects;
@@ -30,16 +29,11 @@ public class JsonObjectHolder {
     public final Map<String, JsonFieldHolder> fieldMap = new TreeMap<>();
     public boolean fileCreated;
 
-    public boolean hasParentClass() {
-        return parentTypeName != null;
-    }
-
     private JsonObjectHolder(JsonObjectHolderBuilder builder) {
         packageName = builder.packageName;
         injectedClassName = builder.injectedClassName;
         objectTypeName = builder.objectTypeName;
         isAbstractClass = builder.isAbstractClass;
-        parentTypeName = builder.parentTypeName;
         parentTypeParametersInfo = builder.parentTypeParametersInfo;
         fieldNamingPolicy = builder.fieldNamingPolicy;
         serializeNullObjects = builder.serializeNullObjects;
@@ -52,7 +46,6 @@ public class JsonObjectHolder {
         private String injectedClassName;
         private TypeName objectTypeName;
         private boolean isAbstractClass;
-        private TypeName parentTypeName;
         private TypeParameterNode parentTypeParametersInfo;
         private FieldNamingPolicy fieldNamingPolicy;
         private boolean serializeNullObjects;
@@ -76,11 +69,6 @@ public class JsonObjectHolder {
 
         public JsonObjectHolderBuilder setIsAbstractClass(boolean isAbstractClass) {
             this.isAbstractClass = isAbstractClass;
-            return this;
-        }
-
-        public JsonObjectHolderBuilder setParentTypeName(TypeName parentTypeName) {
-            this.parentTypeName = parentTypeName;
             return this;
         }
 

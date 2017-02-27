@@ -11,11 +11,11 @@ import com.bluelinelabs.logansquare.processor.JsonObjectHolder.JsonObjectHolderB
 import com.bluelinelabs.logansquare.processor.TextUtils;
 import com.bluelinelabs.logansquare.processor.TypeUtils;
 import com.bluelinelabs.logansquare.processor.type.TypeParameterNode;
-import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +26,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -73,17 +74,24 @@ public class JsonObjectProcessor extends Processor {
             String injectedSimpleClassName = objectClassName + Constants.MAPPER_CLASS_SUFFIX;
             boolean abstractClass = element.getModifiers().contains(ABSTRACT);
             TypeParameterNode parentTypeParametersInfo = null;
-            TypeName parentClassName = null;
 
             TypeMirror superclass = typeElement.getSuperclass();
             while (superclass.getKind() != TypeKind.NONE) {
-                TypeElement superclassElement = (TypeElement)types.asElement(superclass);
+                TypeElement superclassElement = (TypeElement) types.asElement(superclass);
+                Map<String, TypeParameterNode> typeParametersValues = new HashMap<>();
+                if (parentTypeParametersInfo != null) {
+                    for (int i = 0; i < superclassElement.getTypeParameters().size(); i++) {
+                        TypeParameterElement typeParameterElement = superclassElement.getTypeParameters().get(i);
+                        if (parentTypeParametersInfo.typeArguments.isEmpty()) {
+                            typeParametersValues.put(typeParameterElement.getSimpleName().toString(), TypeParameterNode.ANY_TYPE_NODE);
+                        } else {
+                            typeParametersValues.put(typeParameterElement.getSimpleName().toString(), parentTypeParametersInfo.typeArguments.get(i));
+                        }
+                    }
+                }
+                parentTypeParametersInfo = TypeParameterNode.fromTypeMirror(superclass, typeParametersValues);
 
                 if (superclassElement.getAnnotation(JsonObject.class) != null) {
-                    String superclassPackageName = elements.getPackageOf(superclassElement).getQualifiedName().toString();
-                    //TODO: we can go through hierarchy and pass generics manually to find parentTypeParametersInfo of deep hided parent
-                    parentTypeParametersInfo = TypeParameterNode.fromTypeMirror(superclass);
-                    parentClassName = ClassName.get(superclassPackageName, TypeUtils.getSimpleClassName(superclassElement, superclassPackageName));
                     break;
                 }
 
@@ -97,7 +105,6 @@ public class JsonObjectProcessor extends Processor {
                     .setInjectedClassName(injectedSimpleClassName)
                     .setObjectTypeName(TypeName.get(typeElement.asType()))
                     .setIsAbstractClass(abstractClass)
-                    .setParentTypeName(parentClassName)
                     .setParentTypeParametersInfo(parentTypeParametersInfo)
                     .setFieldNamingPolicy(annotation.fieldNamingPolicy())
                     .setSerializeNullObjects(annotation.serializeNullObjects())
