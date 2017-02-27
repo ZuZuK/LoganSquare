@@ -50,7 +50,7 @@ public class JsonFieldHolder {
         try {
             typeParameterNode = TypeParameterNode.fromTypeMirror(element.asType(), new HashMap<>());
         } catch (Throwable tr) {
-            //ignore
+            //TODO get rid of try/catch
         }
         type = Type.typeFor(element.asType(), typeConverterType, elements, types);
         return ensureValidType(type, element);

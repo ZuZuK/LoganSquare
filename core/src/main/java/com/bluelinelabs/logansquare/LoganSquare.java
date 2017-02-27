@@ -44,34 +44,33 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LoganSquare {
 
     private static final Map<Class, JsonMapper> OBJECT_MAPPERS = new ConcurrentHashMap<Class, JsonMapper>();
+
     static {
         ObjectMapper objectMapper = new ObjectMapper();
-        OBJECT_MAPPERS.put(String.class, new StringMapper());
-        OBJECT_MAPPERS.put(Integer.class, new IntegerMapper());
-        OBJECT_MAPPERS.put(Long.class, new LongMapper());
-        OBJECT_MAPPERS.put(Float.class, new FloatMapper());
-        OBJECT_MAPPERS.put(Double.class, new DoubleMapper());
-        OBJECT_MAPPERS.put(Boolean.class, new BooleanMapper());
-        OBJECT_MAPPERS.put(Object.class, objectMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(String.class), new StringMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(Integer.class), new IntegerMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(Long.class), new LongMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(Float.class), new FloatMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(Double.class), new DoubleMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(Boolean.class), new BooleanMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(Object.class), objectMapper);
         ArrayListMapper<Object> arrayListMapper = new ArrayListMapper<>(objectMapper);
-        OBJECT_MAPPERS.put(List.class, arrayListMapper);
-        OBJECT_MAPPERS.put(ArrayList.class, arrayListMapper);
-        OBJECT_MAPPERS.put(LinkedList.class, new LinkedListMapper<>(objectMapper));
+        OBJECT_MAPPERS.put(new ParameterizedType(List.class), arrayListMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(ArrayList.class), arrayListMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(LinkedList.class), new LinkedListMapper<>(objectMapper));
         HashSetMapper<Object> hashSetMapper = new HashSetMapper<>(objectMapper);
-        OBJECT_MAPPERS.put(Set.class, hashSetMapper);
-        OBJECT_MAPPERS.put(HashSet.class, hashSetMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(Set.class), hashSetMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(HashSet.class), hashSetMapper);
         HashMapMapper<Object> hashMapMapper = new HashMapMapper<>(objectMapper);
-        OBJECT_MAPPERS.put(Map.class, hashMapMapper);
-        OBJECT_MAPPERS.put(HashMap.class, hashMapMapper);
-        OBJECT_MAPPERS.put(TreeMap.class, new TreeMapMapper<>(objectMapper));
-        OBJECT_MAPPERS.put(LinkedHashMap.class, new LinkedHashMapMapper<>(objectMapper));
+        OBJECT_MAPPERS.put(new ParameterizedType(Map.class), hashMapMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(HashMap.class), hashMapMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(TreeMap.class), new TreeMapMapper<>(objectMapper));
+        OBJECT_MAPPERS.put(new ParameterizedType(LinkedHashMap.class), new LinkedHashMapMapper<>(objectMapper));
         ArrayDequeMapper<Object> arrayDequeMapper = new ArrayDequeMapper<>(objectMapper);
-        OBJECT_MAPPERS.put(Queue.class, arrayDequeMapper);
-        OBJECT_MAPPERS.put(Deque.class, arrayDequeMapper);
-        OBJECT_MAPPERS.put(ArrayDeque.class, arrayDequeMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(Queue.class), arrayDequeMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(Deque.class), arrayDequeMapper);
+        OBJECT_MAPPERS.put(new ParameterizedType(ArrayDeque.class), arrayDequeMapper);
     }
-
-    private static final ConcurrentHashMap<ParameterizedType, JsonMapper> PARAMETERIZED_OBJECT_MAPPERS = new ConcurrentHashMap<ParameterizedType, JsonMapper>();
 
     private static final SimpleArrayMap<Class, TypeConverter> TYPE_CONVERTERS = new SimpleArrayMap<>();
     static {
@@ -249,23 +248,9 @@ public class LoganSquare {
     }
 
     @SuppressWarnings("unchecked")
-    /*package*/ static <E> JsonMapper<E> getMapper(Class<E> cls) {
-        JsonMapper<E> mapper = OBJECT_MAPPERS.get(cls);
-        if (mapper == null) {
-            // The only way the mapper wouldn't already be loaded into OBJECT_MAPPERS is if it was compiled separately, but let's handle it anyway
-            try {
-                Class<?> mapperClass = Class.forName(cls.getName() + Constants.MAPPER_CLASS_SUFFIX);
-                mapper = (JsonMapper<E>)mapperClass.newInstance();
-                OBJECT_MAPPERS.put(cls, mapper);
-            } catch (Exception ignored) { }
-        }
-        return mapper;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E> JsonMapper<E> tryGetCollectionMapper(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers){
+    private static <E> JsonMapper<E> tryGetCollectionMapper(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers) {
         JsonMapper<E> mapper;
-        if (type.rawType == List.class || type.rawType == ArrayList.class){
+        if (type.rawType == List.class || type.rawType == ArrayList.class) {
             mapper = new ArrayListMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
         } else if (type.rawType == Map.class || type.rawType == HashMap.class) {
             mapper = new HashMapMapper(LoganSquare.mapperFor(type.typeParameters.get(1), partialMappers));
@@ -283,25 +268,22 @@ public class LoganSquare {
             mapper = null;
         }
         if (mapper != null) {
-            PARAMETERIZED_OBJECT_MAPPERS.put(type, mapper);
+            OBJECT_MAPPERS.put(type, mapper);
         }
         return mapper;
     }
 
     @SuppressWarnings("unchecked")
-    private static <E> JsonMapper<E> getMapper(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers) {
-        if (type.typeParameters.size() == 0) {
-            return getMapper((Class<E>)type.rawType);
-        }
-
+    private static <E> JsonMapper<E> getMapper(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers)
+            throws NoSuchMapperException {
         if (partialMappers == null) {
-            partialMappers = new SimpleArrayMap<ParameterizedType, JsonMapper>();
+            partialMappers = new SimpleArrayMap<>();
         }
 
-        if (partialMappers.containsKey(type)) {
+        if (OBJECT_MAPPERS.containsKey(type)) {
+            return OBJECT_MAPPERS.get(type);
+        } else if (partialMappers.containsKey(type)) {
             return partialMappers.get(type);
-        } else if (PARAMETERIZED_OBJECT_MAPPERS.containsKey(type)) {
-            return PARAMETERIZED_OBJECT_MAPPERS.get(type);
         } else {
             try {
                 JsonMapper<E> mapper = tryGetCollectionMapper(type, partialMappers);
@@ -310,16 +292,20 @@ public class LoganSquare {
                 }
                 Class<?> mapperClass = Class.forName(type.rawType.getName() + Constants.MAPPER_CLASS_SUFFIX);
                 Constructor constructor = mapperClass.getDeclaredConstructors()[0];
-                Object[] args = new Object[2 + type.typeParameters.size()];
-                args[0] = type;
-                args[args.length - 1] = partialMappers;
-                for (int i = 0; i < type.typeParameters.size(); i++) {
-                    args[i + 1] = type.typeParameters.get(i);
+                if (type.typeParameters.isEmpty()) {
+                    mapper = (JsonMapper<E>) constructor.newInstance();
+                } else {
+                    Object[] args = new Object[2 + type.typeParameters.size()];
+                    args[0] = type;
+                    args[args.length - 1] = partialMappers;
+                    for (int i = 0; i < type.typeParameters.size(); i++) {
+                        args[i + 1] = type.typeParameters.get(i);
+                    }
+                    mapper = (JsonMapper<E>) constructor.newInstance(args);
                 }
-                mapper = (JsonMapper<E>)constructor.newInstance(args);
-                PARAMETERIZED_OBJECT_MAPPERS.put(type, mapper);
+                OBJECT_MAPPERS.put(type, mapper);
                 return mapper;
-            } catch (Exception ignored) {
+            } catch (Exception throwable) {
                 return null;
             }
         }
@@ -332,7 +318,7 @@ public class LoganSquare {
      */
     @SuppressWarnings("unchecked")
     public static boolean supports(Class cls) {
-        return getMapper(cls) != null;
+        return getMapper(new ParameterizedType<>(cls), null) != null;
     }
 
     /**
@@ -345,19 +331,22 @@ public class LoganSquare {
         return getMapper(type, null) != null;
     }
 
+    public static <E> JsonMapper<E> mapperFor(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers) throws NoSuchMapperException {
+        JsonMapper<E> mapper = getMapper(type, partialMappers);
+        if (mapper == null) {
+            throw new NoSuchMapperException(type.rawType);
+        } else {
+            return mapper;
+        }
+    }
+
     /**
      * Returns a JsonMapper for a given class that has been annotated with @JsonObject.
      *
      * @param cls The class for which the JsonMapper should be fetched.
      */
     public static <E> JsonMapper<E> mapperFor(Class<E> cls) throws NoSuchMapperException {
-        JsonMapper<E> mapper = getMapper(cls);
-
-        if (mapper == null) {
-            throw new NoSuchMapperException(cls);
-        } else {
-            return mapper;
-        }
+        return mapperFor(new ParameterizedType<E>(cls), null);
     }
 
     /**
