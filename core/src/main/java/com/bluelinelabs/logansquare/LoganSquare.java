@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /** The point of all interaction with this library. */
 public class LoganSquare {
 
-    private static final Map<Class, JsonMapper> OBJECT_MAPPERS = new ConcurrentHashMap<Class, JsonMapper>();
+    private static final Map<ParameterizedType, JsonMapper> OBJECT_MAPPERS = new ConcurrentHashMap<>();
 
     static {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -357,15 +357,6 @@ public class LoganSquare {
     @SuppressWarnings("unchecked")
     public static <E> JsonMapper<E> mapperFor(ParameterizedType<E> type) throws NoSuchMapperException {
         return mapperFor(type, null);
-    }
-
-    public static <E> JsonMapper<E> mapperFor(ParameterizedType<E> type, SimpleArrayMap<ParameterizedType, JsonMapper> partialMappers) throws NoSuchMapperException {
-        JsonMapper<E> mapper = getMapper(type, partialMappers);
-        if (mapper == null) {
-            throw new NoSuchMapperException(type.rawType);
-        } else {
-            return mapper;
-        }
     }
 
     /**
