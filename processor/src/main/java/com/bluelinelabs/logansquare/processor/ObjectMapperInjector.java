@@ -34,6 +34,7 @@ import java.util.Set;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.TypeVariable;
+
 import static com.bluelinelabs.logansquare.processor.type.TypeParameterNode.ANY_TYPE_NODE;
 
 public class ObjectMapperInjector implements Injector {
@@ -66,19 +67,16 @@ public class ObjectMapperInjector implements Injector {
         builder.superclass(ParameterizedTypeName.get(ClassName.get(JsonMapper.class), mJsonObjectHolder.objectTypeName));
 
         for (TypeParameterElement typeParameterElement : mJsonObjectHolder.typeParameters) {
-            builder.addTypeVariable(TypeVariableName.get((TypeVariable)typeParameterElement.asType()));
+            builder.addTypeVariable(TypeVariableName.get((TypeVariable) typeParameterElement.asType()));
         }
 
-        if (mJsonObjectHolder.parentTypeName != null && mJsonObjectHolder.parentTypeParametersInfo != null) {
+        if (mJsonObjectHolder.parentTypeParametersInfo != null) {
             FieldSpec.Builder parentMapperBuilder;
 
-            //TODO: there is a bug if we have such hierarchy: @JsonObject ClassA<T> that extends ClassB that extends @JsonObject ClassC<List<String>>
-            // it will create mapper for ClassC but not for ClassC<List<String>>
-            // actually we should get rid of mJsonObjectHolder.parentTypeName and generate right mJsonObjectHolder.parentTypeParametersInfo for deep hided parent
             if (mJsonObjectHolder.parentTypeParametersInfo.typeArguments.isEmpty()) {
-                parentMapperBuilder = FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(JsonMapper.class), mJsonObjectHolder.parentTypeName), PARENT_OBJECT_MAPPER_VARIABLE_NAME)
+                parentMapperBuilder = FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(JsonMapper.class), ClassName.get(mJsonObjectHolder.parentTypeParametersInfo.type)), PARENT_OBJECT_MAPPER_VARIABLE_NAME)
                         .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                        .initializer("$T.mapperFor($T.class)", LoganSquare.class, mJsonObjectHolder.parentTypeName);
+                        .initializer("$T.mapperFor($T.class)", LoganSquare.class, mJsonObjectHolder.parentTypeParametersInfo.type);
             } else {
                 parentMapperBuilder = FieldSpec.builder(ClassName.get(JsonMapper.class), PARENT_OBJECT_MAPPER_VARIABLE_NAME)
                         .addModifiers(Modifier.PRIVATE);
@@ -262,7 +260,7 @@ public class ObjectMapperInjector implements Injector {
 
         int parseFieldLines = addParseFieldLines(builder);
 
-        if (mJsonObjectHolder.parentTypeName != null && mJsonObjectHolder.parentTypeParametersInfo != null) {
+        if (mJsonObjectHolder.parentTypeParametersInfo != null) {
             if (parseFieldLines > 0) {
                 builder.nextControlFlow("else");
                 builder.addStatement("$L.parseField(instance, fieldName, $L)", PARENT_OBJECT_MAPPER_VARIABLE_NAME, JSON_PARSER_VARIABLE_NAME);
@@ -318,7 +316,7 @@ public class ObjectMapperInjector implements Injector {
             }
         }
 
-        if (mJsonObjectHolder.parentTypeName != null && mJsonObjectHolder.parentTypeParametersInfo != null) {
+        if (mJsonObjectHolder.parentTypeParametersInfo != null) {
             builder.addStatement("$L.serialize(object, $L, false)", PARENT_OBJECT_MAPPER_VARIABLE_NAME, JSON_GENERATOR_VARIABLE_NAME);
         }
 
