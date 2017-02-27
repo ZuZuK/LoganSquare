@@ -46,6 +46,7 @@ public abstract class Type {
 
             if (type == null) {
                 if (typeMirror.toString().contains("?")) {
+                    //TODO: guess we can easily support it with TypeParameterNode
                     throw new RuntimeException("Generic types with wildcards are currently not supported by LoganSquare.");
                 }
                 try {
