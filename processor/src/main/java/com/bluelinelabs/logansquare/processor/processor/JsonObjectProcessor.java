@@ -75,6 +75,7 @@ public class JsonObjectProcessor extends Processor {
             String injectedSimpleClassName = objectClassName + Constants.MAPPER_CLASS_SUFFIX;
             boolean abstractClass = element.getModifiers().contains(ABSTRACT);
             TypeParameterNode parentTypeParametersInfo = null;
+            boolean jsonObjectParentFound = false;
 
             TypeMirror superclass = typeElement.getSuperclass();
             while (superclass.getKind() != TypeKind.NONE) {
@@ -93,10 +94,14 @@ public class JsonObjectProcessor extends Processor {
                 parentTypeParametersInfo = TypeParameterNode.fromTypeMirror(superclass, typeParametersValues);
 
                 if (superclassElement.getAnnotation(JsonObject.class) != null) {
+                    jsonObjectParentFound = true;
                     break;
                 }
 
                 superclass = superclassElement.getSuperclass();
+            }
+            if (!jsonObjectParentFound) {
+                parentTypeParametersInfo = null;
             }
 
             JsonObject annotation = element.getAnnotation(JsonObject.class);
