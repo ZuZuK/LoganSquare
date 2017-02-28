@@ -2,14 +2,20 @@ package com.bluelinelabs.logansquare;
 
 import com.bluelinelabs.logansquare.internal.objectmappers.ArrayDequeMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.ArrayListMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.ArrayMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.BooleanArrayMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.BooleanMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.DoubleArrayMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.DoubleMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.FloatArrayMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.FloatMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.HashMapMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.HashSetMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.IntegerArrayMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.IntegerMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.LinkedHashMapMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.LinkedListMapper;
+import com.bluelinelabs.logansquare.internal.objectmappers.LongArrayMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.LongMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.ObjectMapper;
 import com.bluelinelabs.logansquare.internal.objectmappers.StringMapper;
@@ -23,6 +29,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -47,13 +54,21 @@ public class LoganSquare {
 
     static {
         ObjectMapper objectMapper = new ObjectMapper();
+        OBJECT_MAPPERS.put(new ParameterizedType(Object.class), objectMapper);
         OBJECT_MAPPERS.put(new ParameterizedType(String.class), new StringMapper());
         OBJECT_MAPPERS.put(new ParameterizedType(Integer.class), new IntegerMapper());
         OBJECT_MAPPERS.put(new ParameterizedType(Long.class), new LongMapper());
         OBJECT_MAPPERS.put(new ParameterizedType(Float.class), new FloatMapper());
         OBJECT_MAPPERS.put(new ParameterizedType(Double.class), new DoubleMapper());
         OBJECT_MAPPERS.put(new ParameterizedType(Boolean.class), new BooleanMapper());
-        OBJECT_MAPPERS.put(new ParameterizedType(Object.class), objectMapper);
+
+        OBJECT_MAPPERS.put(new ParameterizedType(Array.class), new ArrayMapper<>(objectMapper));
+        OBJECT_MAPPERS.put(new ParameterizedType(int[].class), new IntegerArrayMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(long[].class), new LongArrayMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(float[].class), new FloatArrayMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(double[].class), new DoubleArrayMapper());
+        OBJECT_MAPPERS.put(new ParameterizedType(boolean[].class), new BooleanArrayMapper());
+
         ArrayListMapper<Object> arrayListMapper = new ArrayListMapper<>(objectMapper);
         OBJECT_MAPPERS.put(new ParameterizedType(List.class), arrayListMapper);
         OBJECT_MAPPERS.put(new ParameterizedType(ArrayList.class), arrayListMapper);
@@ -254,6 +269,10 @@ public class LoganSquare {
             mapper = new ArrayListMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
         } else if (type.rawType == Map.class || type.rawType == HashMap.class) {
             mapper = new HashMapMapper(LoganSquare.mapperFor(type.typeParameters.get(1), partialMappers));
+        } else if (type.rawType.isArray()) {
+            mapper = new ArrayMapper(LoganSquare.mapperFor(new ParameterizedType(type.rawType.getComponentType()), partialMappers));
+        } else if (type.rawType == Array.class) {
+            mapper = new ArrayMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
         } else if (type.rawType == Set.class || type.rawType == HashSet.class) {
             mapper = new HashSetMapper(LoganSquare.mapperFor(type.typeParameters.get(0), partialMappers));
         } else if (type.rawType == LinkedList.class) {

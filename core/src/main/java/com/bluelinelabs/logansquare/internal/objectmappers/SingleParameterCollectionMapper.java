@@ -5,13 +5,12 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 
 /**
  * Built-in mapper for List objects of an specific type
  */
-public abstract class SingleParameterCollectionMapper<TItem, TCollection extends Collection<TItem>> extends JsonMapper<TCollection> {
+public abstract class SingleParameterCollectionMapper<TItem, TCollection> extends JsonMapper<TCollection> {
 
     private final JsonMapper<TItem> itemMapper;
 
