@@ -23,11 +23,20 @@ public class ParameterizedType<T> {
                 return typeParameters;
             }
         }
+        if (type instanceof GenericArrayType) {
+            return new ParameterizedType[]{new ParameterizedType(((GenericArrayType) type).getGenericComponentType())};
+        }
+        if (type instanceof Class && ((Class) type).isArray() && !((Class) type).getComponentType().isPrimitive()) {
+            return new ParameterizedType[]{new ParameterizedType(((Class) type).getComponentType())};
+        }
         return EMPTY_PARAMETERS_ARRAY;
     }
 
     private static Class getRawType(Type type) {
         if (type instanceof Class) {
+            if (((Class) type).isArray() && !((Class) type).getComponentType().isPrimitive()) {
+                return Array.class;
+            }
             return (Class) type;
         } else if (type instanceof java.lang.reflect.ParameterizedType) {
             return (Class) (((java.lang.reflect.ParameterizedType) type).getRawType());
@@ -42,7 +51,7 @@ public class ParameterizedType<T> {
                 return Object.class;
             }
         } else if (type instanceof GenericArrayType) {
-            return Array.newInstance(getRawType(((GenericArrayType) type).getGenericComponentType()), 0).getClass();
+            return Array.class;
         } else {
             throw new RuntimeException("Invalid type passed: " + type);
         }

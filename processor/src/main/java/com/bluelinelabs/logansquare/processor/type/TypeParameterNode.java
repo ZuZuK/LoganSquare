@@ -1,6 +1,9 @@
 package com.bluelinelabs.logansquare.processor.type;
 
+import com.squareup.javapoet.TypeName;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -38,33 +41,47 @@ public class TypeParameterNode {
             }
             return new TypeParameterNode((DeclaredType) typeMirror, typeArguments);
         }
-        //TODO: someday but not today...
         if (typeMirror instanceof ArrayType) {
-            throw new IllegalStateException("Arrays in generics currently not supported");
+            TypeName typeName = TypeName.get(((ArrayType) typeMirror).getComponentType());
+            if(!typeName.isPrimitive()) {
+                return new TypeParameterNode(TypeParameterNode.fromTypeMirror(((ArrayType) typeMirror).getComponentType(), filledParametersValues));
+            } else {
+                return new TypeParameterNode(true, typeName.toString());
+            }
         }
         throw new IllegalStateException("Unexpected kind of type " + typeMirror.getKind());
     }
 
+    public final boolean isArray;
     public final String typeVarName;
     public final DeclaredType type;
     public final List<TypeParameterNode> typeArguments;
 
-    private TypeParameterNode(String typeVarName, DeclaredType type, List<TypeParameterNode> typeArguments) {
+    private TypeParameterNode(String typeVarName, DeclaredType type, List<TypeParameterNode> typeArguments, boolean isArray) {
         this.typeVarName = typeVarName;
         this.type = type;
         this.typeArguments = typeArguments;
+        this.isArray = isArray;
     }
 
     private TypeParameterNode() {
-        this(null, null, new ArrayList<>());
+        this(null, null, new ArrayList<>(), false);
     }
 
     private TypeParameterNode(DeclaredType type, List<TypeParameterNode> typeArguments) {
-        this(null, type, typeArguments);
+        this(null, type, typeArguments, false);
     }
 
     private TypeParameterNode(String typeVarName) {
-        this(typeVarName, null, new ArrayList<>());
+        this(typeVarName, null, new ArrayList<>(), false);
+    }
+
+    private TypeParameterNode(boolean isArray, String typeVarName) {
+        this(typeVarName, null, new ArrayList<>(), true);
+    }
+
+    private TypeParameterNode(TypeParameterNode typeArgument) {
+        this(null, null, Collections.singletonList(typeArgument), true);
     }
 
     public boolean isGeneric() {

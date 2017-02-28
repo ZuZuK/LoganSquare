@@ -25,6 +25,7 @@ import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.TypeVariableName;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -97,7 +98,7 @@ public class ObjectMapperInjector implements Injector {
         Set<ClassName> typeConvertersUsed = new HashSet<>();
         for (JsonFieldHolder fieldHolder : mJsonObjectHolder.fieldMap.values()) {
             if (fieldHolder.type instanceof TypeConverterFieldType) {
-                typeConvertersUsed.add(((TypeConverterFieldType)fieldHolder.type).getTypeConverterClassName());
+                typeConvertersUsed.add(((TypeConverterFieldType) fieldHolder.type).getTypeConverterClassName());
             }
         }
         for (ClassName typeConverter : typeConvertersUsed) {
@@ -194,27 +195,39 @@ public class ObjectMapperInjector implements Injector {
         if (info == ANY_TYPE_NODE) {
             return CodeBlock.builder().add("new $T<>($T.class)", ParameterizedType.class, Object.class).build();
         }
-        if (info.typeVarName != null) {
+
+        if (info.typeVarName != null && !info.isArray) {
             for (TypeParameterElement typeParameter : typeParameters) {
                 String typeName = typeParameter.getSimpleName().toString();
                 if (typeParameter.getSimpleName().toString().equals(info.typeVarName)) {
                     return CodeBlock.builder().add(typeName + "Type").build();
                 }
             }
-            return CodeBlock.builder().add("new $T<>($T.class)", ParameterizedType.class, Object.class).build();
+            return CodeBlock.builder().add("new $T<>($L.class)", ParameterizedType.class, info.typeVarName).build();
         }
+
+        if (info.isArray && info.typeVarName != null) {
+            return CodeBlock.builder().add("new $T<>($L[].class)", ParameterizedType.class, info.typeVarName).build();
+        }
+
         CodeBlock.Builder result = CodeBlock.builder();
-        String name = info.type.toString();
+
         result.add("new $T(", ParameterizedType.class);
         if (!info.typeArguments.isEmpty()) {
-            result.add("$T.class", ClassName.bestGuess(name.substring(0, name.indexOf("<"))));
+            if (info.isArray) {
+                result.add("$T.class", Array.class);
+            } else {
+                String name = info.type.toString();
+                result.add("$T.class", ClassName.bestGuess(name.substring(0, name.indexOf("<"))));
+            }
             for (TypeParameterNode typeParameterNode : info.typeArguments) {
                 result.add(", ");
                 result.add(getParametrizedMapperCodeBlock(typeParameterNode, mJsonObjectHolder.typeParameters));
             }
         } else {
-            result.add("$T.class", ClassName.bestGuess(name));
+            result.add("$T.class", ClassName.bestGuess(info.type.toString()));
         }
+
         result.add(")");
         return result.build();
     }
